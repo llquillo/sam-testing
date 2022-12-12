@@ -1,30 +1,22 @@
-import boto3
-import os
+import base64
+import json
+from os import environ
+
 
 def handler(event, context):
-  return None
+    body = base64.b64decode(event["body"])
+    json_body = json.loads(body)
 
+    filename = json_body["filename"]
 
-def upload_file(local_file, s3_file):
-    s3 = boto3.client('s3')
+    url = 'https://{}/{}/{}/{}'.format(
+        event['headers']['Host'], event['requestContext']['stage'],
+        environ.get('BUCKET_NAME'), filename
+    )
 
-    try:
-      s3.upload_file(
-        local_file, os.environ['BUCKET_NAME'], s3_file
-      )
-      url = s3.generate_presigned_url(
-          ClientMethod='get_object',
-          Params={
-              'Bucket': os.environ['BUCKET_NAME'],
-              'Key': s3_file
-          },
-          ExpiresIn=24 * 3600
-      )
-      print("Upload Successful", url)
-      return url
-    except FileNotFoundError:
-        print("The file was not found")
-        return None
-    except NoCredentialsError:
-        print("Credentials not available")
-        return None
+    return {
+        "statusCode": 200,
+        "body": json.dumps({
+            "url": url,
+        }),
+    }
