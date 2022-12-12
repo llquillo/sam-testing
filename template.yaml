@@ -1,0 +1,245 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  sam-app-testing
+
+  Sample SAM Template for sam-app-testing
+
+Globals:
+  Function:
+    Runtime: python3.7
+    Layers:
+      - !Ref AppDependenciesLayer
+    Timeout: 3
+    Environment:
+      Variables:
+        DB_HOST: !GetAtt RDS.Endpoint.Address
+        DB_PORT: !GetAtt RDS.Endpoint.Port
+        DB_NAME: "sample_rds"
+        DB_USER: "root"
+        DB_PASSWORD: "postgres"
+        COGNITO_UUID: none
+        USERPOOL_ID: "us-east-1_y4EVS26NR"
+        TOKEN_CLIENT_ID: "UserPoolTokenClient-kBfdU0HZWN0f"
+
+Resources:
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Open PostgreSQL database access
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: 0.0.0.0/0
+
+  RDS:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: "5"
+      DBInstanceClass: "db.t2.micro"
+      Engine: "postgres"
+      EngineVersion: "12.10"
+      PubliclyAccessible: true
+      DBName: "sample_rds"
+      MasterUsername: "root"
+      MasterUserPassword: "postgres"
+      VPCSecurityGroups:
+        - !GetAtt DBSecurityGroup.GroupId
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+
+  API:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: sample
+      Cors:
+        AllowHeaders: "'Content-Type, Authorization'"
+        AllowOrigin: "'*'"
+      Auth:
+        Authorizers:
+          APIAuthorizer:
+            UserPoolArn: !GetAtt "UserPool.Arn"
+
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: UserPool
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          RequireUppercase: true
+  
+  UserPoolTokenClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_ADMIN_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+  UserPoolCognitoTrigger:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: hello_world/
+      Handler: signup.handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - SecretsManagerReadWrite
+      Events:
+        CognitoPostSignup:
+          Type: Cognito
+          Properties:
+            UserPool: !Ref UserPool
+            Trigger: PostConfirmation
+
+  AppDependenciesLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: AppDependencies
+      Description: Application Dependencies Layer
+      ContentUri: dependencies/
+      CompatibleRuntimes:
+        - python3.7
+        - python3.6
+      RetentionPolicy: Delete
+
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: sample-s3-dec062022
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ["*"]
+            AllowedOrigins: ["*"]
+            AllowedMethods: [GET, PUT, POST]
+  
+  SQSQueue: 
+    Type: AWS::SQS::Queue
+    Properties: 
+      ContentBasedDeduplication: true
+      FifoQueue: true
+      QueueName: "sample_sqs.fifo"
+      RedrivePolicy: 
+        deadLetterTargetArn: 
+          Fn::GetAtt: 
+            - "SQSDeadLetterQueue"
+            - "Arn"
+        maxReceiveCount: 3
+      VisibilityTimeout: 120
+
+  SQSDeadLetterQueue: 
+    Type: AWS::SQS::Queue
+    Properties:
+      ContentBasedDeduplication: true
+      FifoQueue: true
+      QueueName: sample-deadletter.fifo
+  
+  Login:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: hello_world/
+      Handler: login.handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - SecretsManagerReadWrite
+        - AmazonCognitoPowerUser
+      Environment:
+        Variables:
+          TOKEN_CLIENT_ID: !Ref UserPoolTokenClient
+          USERPOOL_ID: !Ref UserPool
+      Events:
+        CognitoLogin:
+          Type: Api
+          Properties:
+            RestApiId: !Ref API
+            Path: /login
+            Method: POST
+
+  HelloWorldFunction:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: hello_world/
+      Handler: app.lambda_handler
+      Architectures:
+        - x86_64
+      Events:
+        HelloWorld:
+          Type: Api 
+          Properties:
+            RestApiId: !Ref API
+            Path: /hello
+            Method: get
+            Auth:
+              Authorizer: APIAuthorizer
+  
+  S3UploadFunction:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: hello_world/
+      Handler: app.upload
+      Architectures:
+        - x86_64
+      Events:
+        HelloWorld:
+          Type: Api 
+          Properties:
+            RestApiId: !Ref API
+            Path: /upload
+            Method: post
+            Auth:
+              Authorizer: APIAuthorizer
+
+Outputs:
+  HelloWorldFunctionIamRole:
+    Description: "Implicit IAM Role created for Hello World function"
+    Value: !GetAtt HelloWorldFunctionRole.Arn
+  APIEndPoint:
+    Description: API Endpoint
+    Value:
+      !Join [
+        "",
+        [
+          "https://",
+          !Ref API,
+          ".execute-api.",
+          !Ref AWS::Region,
+          ".amazonaws.com/",
+          api,
+          "/",
+        ],
+      ]
+    Export:
+      Name: APIEndPoint
+  RDSEndpoint:
+    Description: RDS Endpoint
+    Value: !Sub "${RDS.Endpoint.Address}:${RDS.Endpoint.Port}"
+    Export:
+      Name: RDSEndpoint
+  QueueURL: 
+    Description: "Amazon SQS Queue URL"
+    Value:
+      Ref: "SQSQueue"
+    Export:
+      Name: SQSQueue
+  QueueARN: 
+    Description: "AmazonSQS Queue ARN"
+    Value: 
+      Fn::GetAtt: 
+        - "SQSQueue"
+        - "Arn"
+  QueueName: 
+    Description: "Amazon SQS Queue Name"
+    Value: 
+      Fn::GetAtt: 
+        - "SQSQueue"
+        - "QueueName"
