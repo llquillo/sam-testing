@@ -16,7 +16,6 @@ def handler(event, context):
         handler_result = None
 
         if message_type == const.UPDATE_INFO:
-            print("Process A")
             body = message_payload.get('body')
             handler_result = update_customer(body['id'], body['updated_email'])
         elif message_type == const.PROCESS_B:

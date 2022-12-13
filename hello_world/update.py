@@ -17,13 +17,10 @@ def handler(event, context):
         'updated_email': json_body['updated_email']
     }
 
-    print(customer_info)
     queue_message = {
         'type': const.UPDATE_INFO,
         'body': customer_info
     }
-    print(queue_message)
-    print(environ.get('SQS_QUEUE_URL'))
 
     sqs = boto3.client('sqs')
     sqs.send_message(
@@ -33,3 +30,8 @@ def handler(event, context):
         ),
         MessageGroupId=const.UPDATE_INFO
     )
+
+    return {
+        "statusCode": 204,
+        "body": None
+    }
