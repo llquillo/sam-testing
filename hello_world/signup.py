@@ -1,5 +1,3 @@
-import json
-
 from data.db import Database
 from models.models import User
 

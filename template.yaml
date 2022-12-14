@@ -19,8 +19,11 @@ Globals:
         DB_USER: "root"
         DB_PASSWORD: "postgres"
         COGNITO_UUID: none
-        USERPOOL_ID: "us-east-1_y4EVS26NR"
-        TOKEN_CLIENT_ID: "UserPoolTokenClient-kBfdU0HZWN0f"
+        USERPOOL_ID: "us-east-1_F4MBEZQbD"
+        TOKEN_CLIENT_ID: "UserPoolTokenClient-XLtLZZkeA7dB"
+        BUCKET_NAME: "sample-s3-dec062022"
+        SQS_QUEUE_URL: "https://sqs.us-east-1.amazonaws.com/643878151433/sample_sqs.fifo"
+        API_ENDPOINT_URL: "https://zdl60g849c.execute-api.us-east-1.amazonaws.com/Stage"
 
 Resources:
   DBSecurityGroup:
@@ -143,6 +146,27 @@ Resources:
       ContentBasedDeduplication: true
       FifoQueue: true
       QueueName: sample-deadletter.fifo
+    
+  SQSQueueTrigger:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: hello_world/
+      Handler: sqs.handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - SecretsManagerReadWrite
+        - AmazonSQSFullAccess
+        - AmazonS3FullAccess
+        - AWSBatchFullAccess
+      Environment:
+        Variables:
+          SQS_QUEUE: !Ref SQSQueue
+      Events:
+        MySQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt SQSQueue.Arn
+            BatchSize: 1
   
   Login:
     Type: AWS::Serverless::Function
@@ -182,11 +206,28 @@ Resources:
             Auth:
               Authorizer: APIAuthorizer
   
+  UpdateCustomerFunction:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: hello_world/
+      Handler: update.handler
+      Architectures:
+        - x86_64
+      Events:
+        HelloWorld:
+          Type: Api 
+          Properties:
+            RestApiId: !Ref API
+            Path: /update
+            Method: patch
+            Auth:
+              Authorizer: APIAuthorizer
+  
   S3UploadFunction:
     Type: AWS::Serverless::Function 
     Properties:
       CodeUri: hello_world/
-      Handler: app.upload
+      Handler: upload.handler
       Architectures:
         - x86_64
       Events:
