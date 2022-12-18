@@ -30,5 +30,8 @@ aws cognito-idp admin-update-user-attributes \
     --region us-east-1 \
     --profile default
 
+# install dependencies
+pip3 install -r tests/requirements.txt
+
 # run tests
 AWS_SAM_STACK_NAME=sam-app python3 -m pytest tests/integration -v
