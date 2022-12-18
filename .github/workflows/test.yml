@@ -1,0 +1,16 @@
+# .github/workflows/app.yaml
+name: PyTest
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v2
+          
+      - name: Run test script
+        run: | 
+          /bin/bash run_test.sh
