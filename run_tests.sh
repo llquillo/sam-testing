@@ -1,6 +1,6 @@
 #!/bin/sh
 
-sam deploy
+# sam deploy
 
 # import dump sql file to rds
 #  psql -h sam-app-rds-kacte84cjwsw.cgx1jv3igwx5.us-east-1.rds.amazonaws.com -p 5432 -U root -d sample_rds < backupfile.sql
