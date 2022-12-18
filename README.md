@@ -25,3 +25,31 @@ aws cognito-idp admin-update-user-attributes \
     --profile default
 
 # sam-testing
+
+sudo mysqldump \
+    --databases sample \
+    --master-data=2  \
+    --single-transaction \
+    --order-by-primary \
+    -r backup.sql \
+    -u local_user \
+    -p password 
+
+# generate db dump
+
+ pg_dump -h sam-app-rds-kacte84cjwsw.cgx1jv3igwx5.us-east-1.rds.amazonaws.com -U root -p 5432 -d sample_rds > backupfile.sql
+
+ pg_restore -h sam-app-rds-kacte84cjwsw.cgx1jv3igwx5.us-east-1.rds.amazonaws.com -p 5432 -U root -d backupfile.sql
+
+ psql -h sam-app-rds-kacte84cjwsw.cgx1jv3igwx5.us-east-1.rds.amazonaws.com -p 5432 -U root -d sample_rds < backupfile.sql
+
+sudo mysqldump \
+    --databases sample \
+    --master-data=2  \
+    --single-transaction \
+    --order-by-primary \
+    -r backup.sql \
+    -u local_user \
+    -p password 
+
+aws apigateway get-export --parameters extensions='apigateway' --rest-api-id zdl60g849c --stage-name Stage --export-type swagger latestswagger2.json
