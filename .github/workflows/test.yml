@@ -13,4 +13,4 @@ jobs:
           
       - name: Run test script
         run: | 
-          /bin/bash run_test.sh
+          /bin/bash run_tests.sh
