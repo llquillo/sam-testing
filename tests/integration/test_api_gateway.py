@@ -14,37 +14,37 @@ class TestApiGateway:
 
     @pytest.fixture()
     def api_gateway_url(self):
-        """ Get the API Gateway URL from Cloudformation Stack outputs """
-        stack_name = os.environ.get("AWS_SAM_STACK_NAME")
+        # """ Get the API Gateway URL from Cloudformation Stack outputs """
+        # stack_name = os.environ.get("AWS_SAM_STACK_NAME")
 
-        if stack_name is None:
-            raise ValueError('Please set the AWS_SAM_STACK_NAME environment variable to the name of your stack')
+        # if stack_name is None:
+        #     raise ValueError('Please set the AWS_SAM_STACK_NAME environment variable to the name of your stack')
 
-        client = boto3.client("cloudformation")
+        # client = boto3.client("cloudformation")
 
-        try:
-            response = client.describe_stacks(StackName=stack_name)
-        except Exception as e:
-            raise Exception(
-                f"Cannot find stack {stack_name} \n" f'Please make sure a stack with the name "{stack_name}" exists'
-            ) from e
+        # try:
+        #     response = client.describe_stacks(StackName=stack_name)
+        # except Exception as e:
+        #     raise Exception(
+        #         f"Cannot find stack {stack_name} \n" f'Please make sure a stack with the name "{stack_name}" exists'
+        #     ) from e
 
-        stacks = response["Stacks"]
-        stack_outputs = stacks[0]["Outputs"]
-        api_outputs = [output for output in stack_outputs if output["OutputKey"] == "APIEndPoint"]
+        # stacks = response["Stacks"]
+        # stack_outputs = stacks[0]["Outputs"]
+        # api_outputs = [output for output in stack_outputs if output["OutputKey"] == "APIEndPoint"]
 
-        if not api_outputs:
-            raise KeyError(f"APIEndPoint not found in stack {stack_name}")
+        # if not api_outputs:
+        #     raise KeyError(f"APIEndPoint not found in stack {stack_name}")
 
-        # return api_outputs[0]["OutputValue"]  # Extract url from stack outputs
+        # # return api_outputs[0]["OutputValue"]  # Extract url from stack outputs
 
-        return "https://zdl60g849c.execute-api.us-east-1.amazonaws.com/Stage"
+        return "https://hrx3v3yfaa.execute-api.us-east-1.amazonaws.com/Sample"
 
     @pytest.fixture()
     def test_login(self, api_gateway_url):
         """ Call login endpoint and check response """
         body = {
-            "username": "llquillo+1@spectrumone.co",
+            "username": "llquillo+3@spectrumone.co",
             "password": "Passw0rd!"
         }
         login_url = api_gateway_url + '/login'
