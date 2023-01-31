@@ -1,6 +1,6 @@
 #!/bin/sh
 
-sam deploy
+# sam deploy
 
 # import dump sql file to rds
 #  psql -h sam-app-rds-kacte84cjwsw.cgx1jv3igwx5.us-east-1.rds.amazonaws.com -p 5432 -U root -d sample_rds < backupfile.sql
@@ -29,6 +29,9 @@ aws cognito-idp admin-update-user-attributes \
     --user-attributes Name=email_verified,Value=true \
     --region us-east-1 \
     --profile default
+
+# install dependencies
+pip3 install -r tests/requirements.txt
 
 # run tests
 AWS_SAM_STACK_NAME=sam-app python3 -m pytest tests/integration -v
